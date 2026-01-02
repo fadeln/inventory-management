@@ -2,7 +2,7 @@
 
 A comprehensive inventory management application built with modern web technologies. This application provides a complete solution for managing warehouse inventory, tracking items, handling incoming and outgoing goods, processing purchase orders, and managing user roles and permissions.
 
-Demo Web : https://demoinventorymanagement18391.netlify.app/login
+Demo Web : https://demoinventorymanagement18391.netlify.app
 
 ## Features
 
