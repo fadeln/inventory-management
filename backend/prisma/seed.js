@@ -44,27 +44,7 @@ async function main() {
     },
   });
 
-  const purchasing = await prisma.user.upsert({
-    where: { username: 'purchasing' },
-    update: {},
-    create: {
-      username: 'purchasing',
-      password: staffPassword,
-      name: 'Purchasing Staff',
-      role: 'purchasing',
-    },
-  });
 
-  const requester = await prisma.user.upsert({
-    where: { username: 'requester' },
-    update: {},
-    create: {
-      username: 'requester',
-      password: staffPassword,
-      name: 'Item Requester',
-      role: 'requester',
-    },
-  });
 
   console.log('Users created');
 
