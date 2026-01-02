@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  warehouse_staff
+  purchasing
+  requester
+  head_of_warehouse
+}
+
+enum RequestStatus {
+  DRAFT
+  WAITING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum TransactionStatus {
+  DRAFT
+  WAITING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum MovementType {
+  in
+  out
+  transfer
+  adjustment
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  itemRequests      ItemRequest[]
+  approvedRequests  ItemRequest[]      @relation("ApprovedBy")
+  incomingGoods     IncomingGoods[]
+  outgoingGoods     OutgoingGoods[]
+  stockMovements    StockMovement[]
+  purchaseOrders    PurchaseOrder[]
+  approvedPurchases PurchaseOrder[]    @relation("POApprovedBy")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items Item[]
+}
+
+model Supplier {
+  id           String   @id @default(uuid())
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  address      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  incomingGoods  IncomingGoods[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model Item {
+  id           String   @id @default(uuid())
+  sku          String   @unique
+  name         String
+  description  String?
+  categoryId   String
+  unit         String
+  minStock     Int      @default(0)
+  currentStock Int      @default(0)
+  location     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category           Category            @relation(fields: [categoryId], references: [id])
+  itemRequestsItems  ItemRequestItem[]
+  incomingGoodsItems IncomingGoodsItem[]
+  outgoingGoodsItems OutgoingGoodsItem[]
+  stockMovements     StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
+}
+
+model ItemRequest {
+  id            String        @id @default(uuid())
+  requestNumber String        @unique
+  reason        String?
+  status        RequestStatus @default(DRAFT)
+  requestedBy String?
+  approvedById  String?
+  approvedAt    DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  requiredDate DateTime @default(now())
+  department String?
+  signatureImage String?
+  rejectReason String?
+  createdById String
+
+  createdBy User  @relation(fields: [createdById], references: [id])
+  items       ItemRequestItem[]
+  approvedBy  User? @relation("ApprovedBy", fields: [approvedById], references: [id])
+}
+
+model ItemRequestItem {
+  id              String @id @default(uuid())
+  itemRequestId String
+  itemId          String
+  quantity        Int
+
+
+  itemRequest ItemRequest @relation(fields: [itemRequestId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id])
+}
+
+model IncomingGoods {
+  id                String            @id @default(uuid())
+  transactionNumber String            @unique
+  referenceNumber   String
+  supplierId        String
+  receivedById      String
+  receivedAt        DateTime          @default(now())
+  notes             String?
+  status            TransactionStatus @default(DRAFT)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  signatureImage String?
+  rejectReason String?
+  approvedAt    DateTime?
+
+  supplier   Supplier            @relation(fields: [supplierId], references: [id])
+  receivedBy User                @relation(fields: [receivedById], references: [id])
+  items      IncomingGoodsItem[]
+}
+
+model IncomingGoodsItem {
+  id              String @id @default(uuid())
+  incomingGoodsId String
+  itemId          String
+  quantity        Int
+  unitPrice       Float?
+
+  incomingGoods IncomingGoods @relation(fields: [incomingGoodsId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id])
+}
+
+model OutgoingGoods {
+  id                String            @id @default(uuid())
+  transactionNumber String            @unique
+   
+  destination       String 
+  issuedById        String
+  issuedAt          DateTime          @default(now())
+  notes             String?
+  status            TransactionStatus @default(DRAFT)
+  recipientName     String?
+  recipientSignature String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  signatureImage String?
+  approvedAt    DateTime?
+  rejectReason String?
+
+  issuedBy User                @relation(fields: [issuedById], references: [id])
+  items    OutgoingGoodsItem[]
+}
+
+model OutgoingGoodsItem {
+  id              String @id @default(uuid())
+  outgoingGoodsId String
+  itemId          String
+  quantity        Int
+
+  outgoingGoods OutgoingGoods @relation(fields: [outgoingGoodsId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id])
+}
+
+model StockMovement {
+  id            String       @id @default(uuid())
+  itemId        String
+  type          MovementType
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  reference     String?
+  notes         String?
+  performedById String
+  createdAt     DateTime     @default(now())
+
+  item        Item @relation(fields: [itemId], references: [id])
+  performedBy User @relation(fields: [performedById], references: [id])
+}
+
+model PurchaseOrder {
+  id            String            @id @default(uuid())
+  orderNumber   String            @unique
+  supplierId    String
+  status        TransactionStatus @default(DRAFT)
+  totalAmount   Float             @default(0)
+  notes         String?
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  signatureImage String?
+  rejectReason String?
+  expectedDate DateTime @default(now())
+  createdById String
+
+  createdBy  User                @relation(fields: [createdById], references: [id])
+  supplier   Supplier            @relation(fields: [supplierId], references: [id])
+  approvedBy User?               @relation("POApprovedBy", fields: [approvedById], references: [id])
+  items      PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(uuid())
+  purchaseOrderId String
+  itemId          String
+  quantity        Int
+  // unitPrice       Float
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id])
+}
